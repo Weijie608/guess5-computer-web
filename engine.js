@@ -53,16 +53,18 @@ export class FrozenStrategyGame {
     this.done = false;
     this.secret = null;
     this.identifiedAfter = null;
+    this.successfulGuessCount = null;
+    this.completionKind = null;
     this.history = [];
     return this.snapshot();
   }
 
   currentNode() {
-    // A negative target is a known singleton, still requiring a winning guess.
+    // A negative target is the revealed singleton; the round has already ended.
     if (this.nodeIndex < 0) {
       const id = -this.nodeIndex - 1;
       if (!this.codes[id]) throw new StrategyDataError("Invalid singleton code.");
-      return [id, 1, [WIN_FEEDBACK, this.nodeIndex]];
+      return [id, 1, []];
     }
     const node = this.strategy.nodes[this.nodeIndex];
     if (!node || !this.codes[node[0]]) throw new StrategyDataError("Missing strategy decision.");
@@ -74,7 +76,8 @@ export class FrozenStrategyGame {
     return { done: this.done, guesses: this.guesses,
       nextGuessNumber: this.done ? this.guesses : this.guesses + 1,
       guessId: node[0], guess: this.codes[node[0]], candidateCount: node[1],
-      identifiedAfter: this.identifiedAfter, secret: this.secret };
+      identifiedAfter: this.identifiedAfter, secret: this.secret,
+      successfulGuessCount: this.successfulGuessCount, completionKind: this.completionKind };
   }
 
   submitFeedback(r, s) {
@@ -91,7 +94,7 @@ export class FrozenStrategyGame {
     }
     if (target === null) {
       throw new InconsistentFeedbackError(
-        "That answer leaves no possible code. Check this score, or undo an earlier answer.");
+        "That answer leaves no possible code. Check this score, or start over if an earlier answer was incorrect.");
     }
     if (!Number.isInteger(target) || (target < 0 ? !this.codes[-target - 1] : !this.strategy.nodes[target])) {
       throw new StrategyDataError("The strategy has a damaged transition.");
@@ -102,28 +105,22 @@ export class FrozenStrategyGame {
     const event = { guessNumber: this.guesses + 1, guess: before.guess, r, s,
       candidateCountBefore: before.candidateCount,
       candidateCountAfter: target < 0 ? 1 : this.strategy.nodes[target][1],
-      nodeBefore: this.nodeIndex, identifiedBefore: this.identifiedAfter,
-      done: label === WIN_FEEDBACK };
+      done: target < 0 };
     // Commit only after validating the entire transition.
     this.guesses += 1;
     this.nodeIndex = target;
     if (target < 0 && this.identifiedAfter === null) this.identifiedAfter = this.guesses;
     this.done = event.done;
-    this.secret = this.done ? before.guess : null;
+    this.secret = this.done ? this.codes[-target - 1] : null;
+    if (this.done) {
+      this.completionKind = label === WIN_FEEDBACK ? "exact" : "identified";
+      this.successfulGuessCount = this.guesses + (this.completionKind === "exact" ? 0 : 1);
+    }
     event.identifiedAfter = this.identifiedAfter;
     event.secret = this.secret;
+    event.completionKind = this.completionKind;
+    event.successfulGuessCount = this.successfulGuessCount;
     this.history.push(event);
     return event;
-  }
-
-  undo() {
-    const event = this.history.pop();
-    if (!event) return false;
-    this.nodeIndex = event.nodeBefore;
-    this.identifiedAfter = event.identifiedBefore;
-    this.guesses -= 1;
-    this.done = false;
-    this.secret = null;
-    return true;
   }
 }

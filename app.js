@@ -52,7 +52,9 @@ function renderHistory() {
     code.setAttribute("aria-label", `Guess ${event.guess}`);
     code.append(digits(event.guess, "history-digit"));
     const count = document.createElement("small");
-    count.textContent = event.done ? "Exact match" : `${event.candidateCountAfter.toLocaleString("en-US")} remaining`;
+    count.textContent = event.done ?
+      (event.completionKind === "exact" ? "Exact match" : "Code determined") :
+      `${event.candidateCountAfter.toLocaleString("en-US")} remaining`;
     summary.append(code, count);
     const feedback = document.createElement("span");
     feedback.className = "history-feedback";
@@ -77,20 +79,20 @@ function render() {
   $("step-count").textContent = state.nextGuessNumber;
   $("candidate-count").textContent = state.candidateCount.toLocaleString("en-US");
   $("computer-guess").replaceChildren(digits(state.guess));
-  $("computer-guess").setAttribute("aria-label", `Computer guess ${state.guess.split("").join(" ")}`);
+  $("computer-guess").setAttribute("aria-label", `${state.done ? "Your code" : "Computer guess"} ${state.guess.split("").join(" ")}`);
   $("feedback-form").hidden = state.done;
   $("result-panel").hidden = !state.done;
-  $("undo-feedback").disabled = game.history.length === 0;
   $("new-game").disabled = false;
   $("stage-label").textContent = state.done ? "Your code" : "My guess";
   if (state.done) {
-    $("status").textContent = "Exact match — 5r 5s.";
-    $("result-copy").textContent = `Guessed correctly in ${state.guesses} ${state.guesses === 1 ? "guess" : "guesses"}. ` +
-      (state.identifiedAfter < state.guesses ?
-        `Your code was determined after ${state.identifiedAfter}; the final guess confirmed it.` :
-        "Your final answer confirmed all five digits and positions.");
-  } else if (state.candidateCount === 1) {
-    $("status").textContent = "One code remains. Confirm my final guess with 5r 5s.";
+    const exact = state.completionKind === "exact";
+    $("result-panel").dataset.state = exact ? "exact" : "identified";
+    $("status").textContent = exact ? "Exact match — 5r 5s." : "Only one possible code remains.";
+    $("result-kicker").textContent = exact ? "Your code, correctly guessed" : "Your code must be";
+    $("result-copy").textContent = exact ?
+      `Guessed correctly in ${state.guesses} ${state.guesses === 1 ? "guess" : "guesses"}. Your answer confirmed all five digits and positions.` :
+      `Determined after ${state.identifiedAfter} ${state.identifiedAfter === 1 ? "guess" : "guesses"}. ` +
+      `An extra exact guess would make the success count ${state.successfulGuessCount}.`;
   } else {
     $("status").textContent = state.guesses === 0 ?
       "Hold your secret in mind. Score my first guess." :
@@ -115,11 +117,6 @@ $("clear-feedback").addEventListener("click", clearSelection);
 $("new-game").addEventListener("click", () => {
   if (!game) return;
   game.reset(); clearSelection(); render();
-});
-$("undo-feedback").addEventListener("click", () => {
-  if (!game?.undo()) return;
-  clearSelection(); render();
-  $("status").textContent = "Last answer removed. Score this guess again.";
 });
 $("feedback-form").addEventListener("submit", (event) => {
   event.preventDefault();

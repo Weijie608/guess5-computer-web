@@ -23,32 +23,37 @@ function answer(secret, guess) {
 const distribution = {}, identifiedDistribution = {};
 const hash = createHash("sha256");
 const nodeVisits = new Map();
-let total = 0, maximum = 0, identificationMaximum = 0, pendingFinalGuesses = 0;
+let total = 0, maximum = 0, identificationMaximum = 0, identifiedWithoutExactMatch = 0;
 for (const secret of codes) {
   const game = new FrozenStrategyGame(STRATEGY);
-  for (let guard = 0; guard < 7 && !game.done; guard += 1) {
+  for (let guard = 0; guard < 6 && !game.done; guard += 1) {
     const before = game.snapshot();
     if (game.nodeIndex >= 0) nodeVisits.set(game.nodeIndex, (nodeVisits.get(game.nodeIndex) ?? 0) + 1);
-    if (before.candidateCount === 1) {
-      assert.equal(game.done, false);
-      assert.equal(before.guess, secret);
-      pendingFinalGuesses += 1;
-    }
+    assert.ok(before.candidateCount > 1, `Requested feedback after identification: ${secret}`);
     const { r, s } = answer(secret, before.guess);
     const result = game.submitFeedback(r, s);
-    assert.equal(result.done, r === 5 && s === 5);
+    assert.equal(result.done, result.candidateCountAfter === 1);
   }
-  assert.equal(game.done, true, `Not solved within seven guesses: ${secret}`);
+  assert.equal(game.done, true, `Not identified within six guesses: ${secret}`);
   assert.equal(game.secret, secret);
   assert.equal(game.history.length, game.guesses);
-  assert.equal(game.history.at(-1).r, 5);
-  assert.equal(game.history.at(-1).s, 5);
-  assert.ok(game.identifiedAfter === game.guesses || game.identifiedAfter === game.guesses - 1);
-  hash.update(`${secret} ${game.guesses}\n`, "ascii");
-  distribution[game.guesses] = (distribution[game.guesses] ?? 0) + 1;
+  const last = game.history.at(-1);
+  const exact = last.r === 5 && last.s === 5;
+  const successCount = game.guesses + (exact ? 0 : 1);
+  assert.equal(game.completionKind, exact ? "exact" : "identified");
+  assert.equal(game.successfulGuessCount, successCount);
+  assert.equal(game.identifiedAfter, game.guesses);
+  assert.equal(game.snapshot().candidateCount, 1);
+  assert.equal(game.snapshot().guess, secret);
+  if (!exact) {
+    identifiedWithoutExactMatch += 1;
+    assert.notEqual(last.guess, secret);
+  }
+  hash.update(`${secret} ${successCount}\n`, "ascii");
+  distribution[successCount] = (distribution[successCount] ?? 0) + 1;
   identifiedDistribution[game.identifiedAfter] = (identifiedDistribution[game.identifiedAfter] ?? 0) + 1;
-  total += game.guesses;
-  maximum = Math.max(maximum, game.guesses);
+  total += successCount;
+  maximum = Math.max(maximum, successCount);
   identificationMaximum = Math.max(identificationMaximum, game.identifiedAfter);
 }
 const actualHash = hash.digest("hex");
@@ -60,7 +65,7 @@ assert.deepEqual(identifiedDistribution, { 1: 1, 2: 14, 3: 573, 4: 6541, 5: 1715
 assert.equal(total, 171689);
 assert.equal(maximum, 7);
 assert.equal(identificationMaximum, 6);
-assert.equal(pendingFinalGuesses, 22262);
+assert.equal(identifiedWithoutExactMatch, 22262);
 assert.equal(nodeVisits.size, STRATEGY.nodes.length);
 for (const [id, count] of nodeVisits) assert.equal(count, STRATEGY.nodes[id][1]);
 
@@ -91,41 +96,33 @@ for (let r = 0; r <= 5 && !inconsistentChecked; r += 1) for (let s = 0; s <= 5; 
 }
 assert.equal(inconsistentChecked, true);
 
-const undoGame = new FrozenStrategyGame(STRATEGY);
-const undoStates = [];
-while (!undoGame.done) {
-  undoStates.push(undoGame.snapshot());
-  const { r, s } = answer("98765", undoGame.snapshot().guess);
-  undoGame.submitFeedback(r, s);
-}
-while (undoStates.length) {
-  assert.equal(undoGame.undo(), true);
-  assert.deepEqual(undoGame.snapshot(), undoStates.pop());
-}
-assert.equal(undoGame.undo(), false);
-undoGame.submitFeedback(5, 5);
-assert.equal(undoGame.secret, "01234");
-assert.equal(undoGame.guesses, 1);
-assert.throws(() => undoGame.submitFeedback(5, 5), FeedbackError);
-undoGame.undo();
-assert.deepEqual(undoGame.snapshot(), initial);
-undoGame.submitFeedback(0, 0);
-assert.deepEqual(undoGame.reset(), initial);
+const exactGame = new FrozenStrategyGame(STRATEGY);
+exactGame.submitFeedback(5, 5);
+assert.equal(exactGame.secret, "01234");
+assert.equal(exactGame.guesses, 1);
+assert.equal(exactGame.successfulGuessCount, 1);
+assert.equal(exactGame.completionKind, "exact");
+assert.throws(() => exactGame.submitFeedback(5, 5), FeedbackError);
+assert.deepEqual(exactGame.reset(), initial);
+assert.equal(exactGame.history.length, 0);
+exactGame.submitFeedback(0, 0);
+assert.deepEqual(exactGame.reset(), initial);
 
 const singleton = new FrozenStrategyGame(STRATEGY);
 while (singleton.snapshot().candidateCount > 1 && !singleton.done) {
   const { r, s } = answer("01235", singleton.snapshot().guess);
   singleton.submitFeedback(r, s);
 }
-assert.equal(singleton.done, false);
-const pending = singleton.snapshot();
-assert.equal(pending.guess, "01235");
-assert.throws(() => singleton.submitFeedback(0, 0), InconsistentFeedbackError);
-assert.deepEqual(singleton.snapshot(), pending);
-singleton.submitFeedback(5, 5);
 assert.equal(singleton.done, true);
-assert.equal(singleton.guesses, pending.guesses + 1);
-assert.equal(singleton.identifiedAfter, pending.guesses);
+assert.equal(singleton.secret, "01235");
+assert.equal(singleton.completionKind, "identified");
+assert.equal(singleton.successfulGuessCount, singleton.guesses + 1);
+assert.equal(singleton.identifiedAfter, singleton.guesses);
+const completed = singleton.snapshot();
+assert.throws(() => singleton.submitFeedback(5, 5), FeedbackError);
+assert.deepEqual(singleton.snapshot(), completed);
+assert.deepEqual(singleton.reset(), initial);
+assert.equal(singleton.history.length, 0);
 assert.throws(() => new FrozenStrategyGame({ ...STRATEGY, codeLength: 4 }), StrategyDataError);
 const damaged = { ...STRATEGY, nodes: [[0, 30240, [35, -2]]] };
 const damagedGame = new FrozenStrategyGame(damaged);
@@ -135,5 +132,5 @@ assert.equal(damagedGame.guesses, 0);
 console.log(JSON.stringify({ status: "PASS", secrets: codes.length, decisionNodes: nodeVisits.size,
   maximumSuccessCount: maximum, maximumIdentificationCount: identificationMaximum,
   totalSuccessCount: total, meanSuccessCount: total / codes.length,
-  resultSha256: actualHash, explicitFinalSingletonGuesses: pendingFinalGuesses,
-  checks: ["all secrets", "invalid feedback", "inconsistent feedback", "undo", "reset", "strict success", "damaged data"] }, null, 2));
+  resultSha256: actualHash, identifiedWithoutExactMatch,
+  checks: ["all secrets", "finish on identification", "invalid feedback", "inconsistent feedback", "reset", "strict-success accounting", "damaged data"] }, null, 2));

@@ -24,11 +24,12 @@ Your secret is never entered into the page. The game does not send feedback to
 a server, use analytics, store game state, or require an account.
 
 The computer may guess a code outside the remaining candidate set. If only one
-candidate remains, the page still presents that code as its next guess and
-waits for **5r 5s**. Identification and actual success are counted separately.
-The round ends only after an exact match. Use **Undo last answer** to correct
-feedback, including the last answer of a completed round. **Start over** and
-reloading the page begin a new round.
+candidate remains, the round ends immediately and reveals it. No additional
+**5r 5s** confirmation is requested. An exact match also ends the round.
+The result distinguishes the guesses used to identify the secret from the
+success count that would include one final exact guess when needed.
+Use **Start over** to begin a new round or correct an earlier accepted answer.
+Reloading the page also starts a new round.
 
 ## Run locally on Windows
 
@@ -57,9 +58,10 @@ node tests/verify-strategy.mjs
 ```
 
 The test drives all 30,240 secrets through the same engine used by the page,
-including the explicit final singleton guess. It hashes the complete per-secret
-result sequence and compares it with the original publication. It also checks
-invalid and inconsistent feedback, undo, restart and damaged strategy data.
+checking that every round ends as soon as the secret is identified. It also
+accounts for the final exact guess in the strict-success totals and hashes the
+complete per-secret result sequence against the original publication. It checks
+invalid and inconsistent feedback, restart and damaged strategy data.
 The included GitHub Actions workflow runs this test on pushes and pull requests.
 
 Expected results:
@@ -72,7 +74,7 @@ Expected results:
 | Maximum identification count | 6 |
 | Total success count | 171,689 |
 | Uniform mean success count | 171689 / 30240 = 5.6775462963 |
-| Paths requiring a final singleton guess | 22,262 |
+| Paths ending by identification before an exact match | 22,262 |
 
 Success-count distribution: `1: 1, 2: 5, 3: 110, 4: 1753, 5: 9508, 6: 15245, 7: 3618`.
 This is an achieved bound, not a claim of theoretical optimality.
@@ -152,7 +154,7 @@ in this repository verifies the strategy; branch-based Pages publishing is
 configured separately using the settings above. See GitHub's
 [Pages publishing-source guide](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 
-For later updates:
+For later updates (the repository and `origin` already exist):
 
 ```powershell
 node tests/verify-strategy.mjs
@@ -160,6 +162,12 @@ git add .
 git commit -m "Update guessing game"
 git push
 ```
+
+If Pages is configured to publish `main` and `/(root)`, each push automatically
+triggers a new deployment. There is no need to recreate the repository, repeat
+`git init`, regenerate the unchanged strategy, or configure Pages again. Wait
+for the **pages build and deployment** run in **Actions** to succeed, then
+reload the site. Use `Ctrl+F5` if your browser still displays cached files.
 
 After the live page is confirmed, its URL can replace the four-digit placeholder
 in the results publication. This project does not edit that publication.
@@ -169,8 +177,8 @@ in the results publication. This project does not edit that publication.
 | File | Purpose |
 | --- | --- |
 | `index.html`, `styles.css`, `icon.svg` | Responsive English interface and artwork. |
-| `app.js` | Feedback selection, error messages, history, undo and restart. |
-| `engine.js` | Deterministic game state and strict-success handling. |
+| `app.js` | Feedback selection, error messages, history, answer reveal and restart. |
+| `engine.js` | Deterministic game state, completion on identification and success-count accounting. |
 | `strategy-data.js` | Frozen five-digit policy, about 452 KB. |
 | `tools/export_strategy.py` | Read-only source verification and reproducible export. |
 | `tests/verify-strategy.mjs` | Exhaustive JavaScript verification and behavior checks. |

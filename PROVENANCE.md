@@ -38,9 +38,10 @@ is 35. Only non-empty feedback branches are stored.
 
 A nonnegative target is another non-singleton node index. A negative target
 encodes the sole remaining candidate: `secretId = -target - 1`. If the answer
-was `5r 5s`, the game has succeeded. Otherwise, the engine enters a pending
-singleton state and must still issue that code and receive `5r 5s`. Singleton
-decisions are implicit in the compact data, but explicit in gameplay and tests.
+was `5r 5s`, the game has succeeded. Otherwise, the engine immediately ends the
+round and reveals the singleton. The result counts the actual identification
+guesses separately from the strict-success total, which includes one additional
+exact guess that the interface does not ask the player to confirm.
 
 The strategy can choose a guess outside the current candidate set. It only
 defines states reachable from the full universe, not every arbitrary subset.
@@ -50,9 +51,11 @@ defines states reachable from the full universe, not every arbitrary subset.
 The Python exporter recomputes feedback from digit positions and set
 intersections, reconstructs branches from the database, and compares all
 30,240 per-secret results with the original results file. The JavaScript test
-separately drives every secret through the browser engine and hashes the
-resulting canonical lines `<secret> <success_count>\n` in codebook order. The
-hash must equal the original result hash above.
+separately drives every secret through the browser engine until identification
+and computes its strict-success count, adding a final exact guess only when the
+last feedback was not `5r 5s`. It hashes the canonical lines
+`<secret> <success_count>\n` in codebook order. The hash must equal the original
+result hash above. The interface stopping rule does not change the frozen policy.
 
 For this policy, the maximum success count is 7, the maximum identification
 count is 6, and the mean success count for a uniform secret is 171689/30240.

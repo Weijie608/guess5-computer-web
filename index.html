@@ -20,7 +20,7 @@
       <p class="eyebrow">Five digits · no repeats</p>
       <h1 id="game-title">Think of a code.<br><em>I’ll find it.</em></h1>
     </div>
-    <div class="step-card" aria-label="Current computer guess"><span id="step-count">1</span><small>of 7</small></div>
+    <div class="step-card" aria-label="Computer guess count"><span id="step-count">1</span><small>guess</small></div>
   </header>
 
   <section class="rules-card" aria-labelledby="rules-title">
@@ -80,11 +80,10 @@
       <button id="submit-feedback" class="primary-button" type="submit" disabled>Submit feedback</button>
     </form>
     <div id="result-panel" class="result-panel" data-state="exact" hidden>
-      <p class="result-kicker">Your code, correctly guessed</p>
+      <p id="result-kicker" class="result-kicker">Your code must be</p>
       <p id="result-copy" class="result-copy" role="status"></p>
     </div>
     <div class="game-actions">
-      <button id="undo-feedback" class="text-button" type="button" disabled>Undo last answer</button>
       <button id="new-game" class="text-button" type="button" disabled>Start over</button>
     </div>
     <button id="retry-load" class="text-button retry-button" type="button" hidden>Reload strategy</button>
