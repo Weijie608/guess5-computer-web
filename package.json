@@ -1,0 +1,9 @@
+{
+  "name": "guess5-computer-web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A verified five-digit Bulls and Cows computer guesser",
+  "scripts": { "test": "node tests/verify-strategy.mjs" },
+  "engines": { "node": ">=20" }
+}

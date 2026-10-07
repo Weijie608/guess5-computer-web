@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#16231e">
+  <meta name="description" content="Think of five different digits. Give r/s feedback and let a verified strategy guess your code in seven guesses or fewer.">
+  <meta property="og:title" content="Guess Five — I’ll Find Your Code">
+  <meta property="og:description" content="Five distinct digits. Seven guesses or fewer. Keep your secret in your head and score the computer’s guesses.">
+  <meta property="og:type" content="website">
+  <title>Guess Five — I’ll Find Your Code</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="shell">
+  <header class="masthead" aria-labelledby="game-title">
+    <div class="brand-mark" aria-hidden="true"><span>5</span><i></i></div>
+    <div class="masthead-copy">
+      <p class="eyebrow">Five digits · no repeats</p>
+      <h1 id="game-title">Think of a code.<br><em>I’ll find it.</em></h1>
+    </div>
+    <div class="step-card" aria-label="Current computer guess"><span id="step-count">1</span><small>of 7</small></div>
+  </header>
+
+  <section class="rules-card" aria-labelledby="rules-title">
+    <div>
+      <p id="rules-title" class="rules-title">Keep your secret to yourself</p>
+      <p>Choose five different digits. A leading zero is allowed.<br>Keep the same secret throughout the round.</p>
+    </div>
+    <div class="rule-keys" aria-label="Feedback rules">
+      <span class="rule-key rule-r"><b>r</b> right place</span>
+      <span class="rule-key rule-s"><b>s</b> shared digits, including r</span>
+    </div>
+    <details class="rule-example">
+      <summary>How do I score a guess?</summary>
+      <p>If your secret is <strong>01234</strong> and my guess is <strong>01567</strong>, answer <strong>2r 2s</strong>: 0 and 1 are shared and both are in the right place. Count correctly placed digits in <em>both</em> r and s. An exact match is <strong>5r 5s</strong>.</p>
+    </details>
+  </section>
+
+  <section class="game-card" aria-label="Computer guessing game">
+    <div class="game-meta">
+      <p id="status" class="status" role="status" aria-live="polite">Loading the strategy…</p>
+      <div class="candidate-pill" aria-label="Possible codes remaining"><span id="candidate-count">30,240</span><small>possible</small></div>
+    </div>
+    <div class="guess-stage">
+      <p id="stage-label" class="stage-label">My guess</p>
+      <div id="computer-guess" class="computer-guess" aria-label="Computer guess" aria-live="polite">
+        <span class="digit-tile">–</span><span class="digit-tile">–</span><span class="digit-tile">–</span><span class="digit-tile">–</span><span class="digit-tile">–</span>
+      </div>
+    </div>
+    <form id="feedback-form" class="feedback-form" novalidate>
+      <div class="feedback-heading">
+        <div><p class="stage-label">Score this guess</p><p class="feedback-help">Pick a number in each row, then submit.</p></div>
+        <button id="clear-feedback" class="clear-button" type="button" disabled>Clear</button>
+      </div>
+      <fieldset>
+        <legend><span class="legend-token rule-r">r</span> Right digit, right place</legend>
+        <div id="r-choices" class="choice-row" role="group" aria-label="Choose r">
+          <button type="button" data-value="0" aria-label="r equals 0" aria-pressed="false" disabled>0</button>
+          <button type="button" data-value="1" aria-label="r equals 1" aria-pressed="false" disabled>1</button>
+          <button type="button" data-value="2" aria-label="r equals 2" aria-pressed="false" disabled>2</button>
+          <button type="button" data-value="3" aria-label="r equals 3" aria-pressed="false" disabled>3</button>
+          <button type="button" data-value="4" aria-label="r equals 4" aria-pressed="false" disabled>4</button>
+          <button type="button" data-value="5" aria-label="r equals 5" aria-pressed="false" disabled>5</button>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend><span class="legend-token rule-s">s</span> Shared digits, including r</legend>
+        <div id="s-choices" class="choice-row" role="group" aria-label="Choose s">
+          <button type="button" data-value="0" aria-label="s equals 0" aria-pressed="false" disabled>0</button>
+          <button type="button" data-value="1" aria-label="s equals 1" aria-pressed="false" disabled>1</button>
+          <button type="button" data-value="2" aria-label="s equals 2" aria-pressed="false" disabled>2</button>
+          <button type="button" data-value="3" aria-label="s equals 3" aria-pressed="false" disabled>3</button>
+          <button type="button" data-value="4" aria-label="s equals 4" aria-pressed="false" disabled>4</button>
+          <button type="button" data-value="5" aria-label="s equals 5" aria-pressed="false" disabled>5</button>
+        </div>
+      </fieldset>
+      <p id="feedback-error" class="feedback-error" role="alert"></p>
+      <button id="submit-feedback" class="primary-button" type="submit" disabled>Submit feedback</button>
+    </form>
+    <div id="result-panel" class="result-panel" data-state="exact" hidden>
+      <p class="result-kicker">Your code, correctly guessed</p>
+      <p id="result-copy" class="result-copy" role="status"></p>
+    </div>
+    <div class="game-actions">
+      <button id="undo-feedback" class="text-button" type="button" disabled>Undo last answer</button>
+      <button id="new-game" class="text-button" type="button" disabled>Start over</button>
+    </div>
+    <button id="retry-load" class="text-button retry-button" type="button" hidden>Reload strategy</button>
+  </section>
+
+  <section class="history-section" aria-labelledby="history-title">
+    <div class="section-heading"><h2 id="history-title">Reasoning trail</h2><span id="history-caption">No feedback yet</span></div>
+    <ol id="history-list" class="history-list" reversed></ol>
+  </section>
+  <footer>
+    <p class="verified-note">7 guesses or fewer · all 30,240 secrets verified</p>
+    <p>Give accurate feedback to follow the strategy. Your secret stays in your head.<br>The game runs in your browser; it does not send your feedback anywhere.</p>
+    <p><a href="https://weijie608.github.io/guess5-web/">Want to guess instead?</a><span aria-hidden="true"> · </span><a href="https://github.com/Weijie608/Bulls-and-Cows/tree/main/guess5">About the strategy</a></p>
+  </footer>
+</main>
+<noscript>This game needs JavaScript to follow the guessing strategy. Enable JavaScript and reload.</noscript>
+<script type="module" src="app.js"></script>
+</body>
+</html>
